@@ -2,6 +2,10 @@ import numpy as np
 from utilities import *
 from sklearn.neighbors import KernelDensity
 
+import sys
+sys.path.append('../Thesis_Artifacts')
+from utils import *
+
 
 # Optimal KDE bandwidths that were determined from CV tuning
 BANDWIDTHS = {'mnist': 1.20, 'cifar': 0.26}
@@ -32,9 +36,10 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
 
     # Correctly classified images. There are no correctly classified Omniglot images.
     # TODO: match logits in omniglot to find images with similar response to replace adversarial images in the paper.
-    inds_correct = np.where(np.argmax(y_test, 1)[:np.int(len(y_test)/2)] == preds_closed)[0]
+    inds_correct = np.where(np.argmax(y_test, 1) == preds_closed)[0]
     x_test_closed = x_test_closed[inds_correct]
-    x_test_open = x_test_open[inds_correct]
+    x_test_open = x_test_open[inds_correct]  # Might as well be randomly sampled images of the same amount.
+    print("Number of correctly classified images: {}".format(len(x_test_closed)))
 
     # Gather Bayesian uncertainty scores.
     print('°' * 15 + "Computing Bayesian uncertainty scores")
