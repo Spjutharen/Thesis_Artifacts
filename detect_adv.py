@@ -1,5 +1,4 @@
 import numpy as np
-from utilities import *
 from sklearn.neighbors import KernelDensity
 
 import sys
@@ -28,6 +27,7 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
 
     # Assuming test set is not shuffled.
     x_test_closed = x_test[:np.int(len(x_test)/2)]
+    y_test_closed = y_test[:np.int(len(x_test)/2)]
     x_test_open = x_test[np.int(len(x_test)/2):]
 
     # Test model.
@@ -36,7 +36,7 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
 
     # Correctly classified images. There are no correctly classified Omniglot images.
     # TODO: match logits in omniglot to find images with similar response to replace adversarial images in the paper.
-    inds_correct = np.where(np.argmax(y_test, 1) == preds_closed)[0]
+    inds_correct = np.where(np.argmax(y_test_closed, 1) == preds_closed)[0]
     x_test_closed = x_test_closed[inds_correct]
     x_test_open = x_test_open[inds_correct]  # Might as well be randomly sampled images of the same amount.
     print("Number of correctly classified images: {}".format(len(x_test_closed)))
