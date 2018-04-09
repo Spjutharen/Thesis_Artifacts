@@ -104,3 +104,4 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
     print('Detector ROC-AUC score: %0.4f' % auc_score)
 
     return kernel_dens, lr, scaler_dens, scaler_uncerts
+
