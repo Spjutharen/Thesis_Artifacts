@@ -1,51 +1,82 @@
-from utilities import *
-from detect_adv import *
-from cnn import *
 import h5py
+from detect_adv import *
+from utils import *
+import sys
+sys.path.append('../Thesis_CNN_mnist/')
+from cnn import MnistCNN
+sys.path.append('../Thesis_Utilities/')
+from utilities import load_datasets
+
+import tensorflow as tf
+import numpy as np
+import pickle
 
 
-# Load file.
-print("Loading existing file '{}'.".format('data.h5'))
-f = h5py.File('data.h5', 'r')
-train_data = f['train_data'][:]
-train_labels = f['train_labels'][:]
-val_data = f['val_data'][:]
-val_labels = f['val_labels'][:]
-x_test = f['test_data'][:]
-y_test = f['test_labels'][:]
-if y_test.shape[1] == 10:
-    print('{} :OBS: Loaded file not containing Omniglot images :OBS: {}'.format(('='*10), ('='*10)))
-else:
-    print('{} :OBS: Loaded file contains {} Omniglot images :OBS: {}'.format(('='*10),
-                                                                             len(y_test)/2, ('='*10)))
-f.close()
-
-le = 400
-train_data = train_data[:le]
-train_labels = train_labels[:le]
-val_data = val_data[:le]
-val_labels = val_labels[:le]
-x_test = x_test[np.int(len(x_test)/2-le/2):np.int(len(x_test)/2+le/2)]
-y_test = y_test[np.int(len(x_test)/2-le/2):np.int(len(x_test)/2+le/2)]
-
-
-print(y_test.shape)
+# Load MNIST and, if omniglot_bool, Omniglot datasets.
+x_train, y_train, _, _, x_test, y_test = load_datasets(test_size=10000, val_size=40000, omniglot_bool=True,
+                                                               name_data_set='data_omni.h5', force=False,
+                                                               create_file=True, r_seed=None)
 
 # Build model.
 tf.reset_default_graph()
 sess = tf.Session()
-model = MnistCNN(sess)
-#
-# Test model.
-preds, _, activations = model.predict(x_test)
+net = MnistCNN(sess, save_dir='../Thesis_CNN_mnist/MnistCNN_save/')
 
-# Evaluate with accuracy.
-accuracy = np.sum(np.argmax(y_test, 1) == preds)
-print('Test accuracy {}'.format(accuracy/len(y_test)))
+# Compute kernel density estimations and linear regression model.
+#kdes, lr, scaler_dens, scaler_uncerts = create_detector(net, x_train, y_train, x_test, y_test, dataset='mnist')
 
-kdes, lr = create_detector(model, x_train=np.concatenate((train_data,val_data)),
-                           y_train=np.concatenate((train_labels,val_labels)),
-                           x_test=x_test, y_test=y_test, dataset='mnist')
+filename = "logregmodel.sav"
+filename2 = "kdes.sav"
+filename3 = "scaler_dens.sav"
+filename4 = "scaler_uncerts.sav"
+# pickle.dump(lr, open(filename, "wb"))
+# pickle.dump(kdes, open(filename2, "wb"))
+# pickle.dump(scaler_dens, open(filename3, "wb"))
+# pickle.dump(scaler_uncerts, open(filename4, "wb"))
 
-print('DONE')
+loaded_logreg = pickle.load(open(filename, 'rb'))
+loaded_kdes = pickle.load(open(filename2, 'rb'))
+scaler_dens = pickle.load(open(filename3, 'rb'))
+scaler_uncerts = pickle.load(open(filename4, 'rb'))
 
+# FOR TESTING SAMPLE IMAGE
+acc = 0
+prob = []
+for i in range(4900, 5100):
+    test_image = x_test[i:i+1]
+    test_label = y_test[i:i+1]
+    xpred, _, xact = net.predict(test_image)
+    uncerts = get_montecarlo_predictions(net, test_image, num_iter=10).var(axis=0).mean(axis=1)
+    hid_acts = xact[-2]
+    score = loaded_kdes[xpred[0]].score_samples(np.reshape(hid_acts, (1, -1)))[0]
+
+    # Z-score using StandardScaler-models
+    uncerts_z = scaler_uncerts.transform([uncerts])
+    score_z = scaler_dens.transform([score])
+
+    values = np.concatenate((score_z.reshape((1, -1)), uncerts_z.reshape((1, -1))), axis=0).transpose([1, 0])
+
+    # Predict using LogisticRegressionCV-model
+    prob.append(loaded_logreg.predict(values))
+
+    if np.where(np.argmax(test_label,1))[0] < 11:
+        true = 0
+    else:
+        true = 1
+    if prob == true:
+        acc = acc +1
+
+    #print("dens: {}".format(dens))
+    #print("uncert: {}".format(xact1))
+    #print("predicted label: {}".format(prob))
+    #print("true label: {}".format(test_label))
+print("Accuracy: {}".format(acc/400))
+# Compute ROC and AUC
+n_samples = 100
+
+_, _, auc_score = compute_roc(
+    probs_neg=prob[:n_samples],
+    probs_pos=prob[n_samples:],
+    plot=False
+)
+print('Detector ROC-AUC score: %0.4f' % auc_score)

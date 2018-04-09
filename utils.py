@@ -1,6 +1,6 @@
 import numpy as np
 import multiprocessing as mp
-from sklearn.preprocessing import scale
+from sklearn.preprocessing import scale, StandardScaler
 from sklearn.linear_model import LogisticRegressionCV
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
@@ -92,9 +92,11 @@ def normalize(normal, novelty):
     """
 
     n_samples = len(normal)
-    total = scale(np.concatenate((normal, novelty)))
+    #total = scale(np.concatenate((normal, novelty)))
+    scaler = StandardScaler()
+    total = scaler.fit_transform([np.concatenate((normal, novelty))])
 
-    return total[:n_samples], total[n_samples:]
+    return total[0, :n_samples], total[0, n_samples:], scaler
 
 
 def train_logistic_regression(densities_pos, densities_neg, uncerts_pos, uncerts_neg):

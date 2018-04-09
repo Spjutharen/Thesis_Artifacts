@@ -1,6 +1,9 @@
 import numpy as np
-from utilities import *
 from sklearn.neighbors import KernelDensity
+
+import sys
+sys.path.append('../Thesis_Artifacts')
+from utils import *
 
 
 # Optimal KDE bandwidths that were determined from CV tuning
@@ -24,6 +27,7 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
 
     # Assuming test set is not shuffled.
     x_test_closed = x_test[:np.int(len(x_test)/2)]
+    y_test_closed = y_test[:np.int(len(x_test)/2)]
     x_test_open = x_test[np.int(len(x_test)/2):]
 
     # Test model.
@@ -32,9 +36,10 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
 
     # Correctly classified images. There are no correctly classified Omniglot images.
     # TODO: match logits in omniglot to find images with similar response to replace adversarial images in the paper.
-    inds_correct = np.where(np.argmax(y_test, 1)[:np.int(len(y_test)/2)] == preds_closed)[0]
+    inds_correct = np.where(np.argmax(y_test_closed, 1) == preds_closed)[0]
     x_test_closed = x_test_closed[inds_correct]
-    x_test_open = x_test_open[inds_correct]
+    x_test_open = x_test_open[inds_correct]  # Might as well be randomly sampled images of the same amount.
+    print("Number of correctly classified images: {}".format(len(x_test_closed)))
 
     # Gather Bayesian uncertainty scores.
     print('°' * 15 + "Computing Bayesian uncertainty scores")
@@ -68,8 +73,11 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
 
     # Z-score the uncertainty and density values.
     print('°' * 15 + "Normalizing values")
-    uncerts_closed_z, uncerts_open_z = normalize(x_closed_uncertanties, x_open_uncertanties)
-    densities_closed_z, densities_open_z = normalize(densities_closed, densities_open)
+    uncerts_closed_z, uncerts_open_z, scaler_uncerts = normalize(x_closed_uncertanties, x_open_uncertanties)
+    densities_closed_z, densities_open_z, scaler_dens = normalize(densities_closed, densities_open)
+
+    #uncerts_closed_z, uncerts_open_z = x_closed_uncertanties, x_open_uncertanties
+    #densities_closed_z, densities_open_z = densities_closed, densities_open
 
     # Build logistic regression detector.
     print('°' * 15 + "Building logistic regression model")
@@ -95,4 +103,4 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
     )
     print('Detector ROC-AUC score: %0.4f' % auc_score)
 
-    return kernel_dens, lr
+    return kernel_dens, lr, scaler_dens, scaler_uncerts
