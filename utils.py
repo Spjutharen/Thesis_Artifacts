@@ -1,12 +1,12 @@
 import numpy as np
 import multiprocessing as mp
-from sklearn.preprocessing import scale, StandardScaler
+from sklearn.preprocessing import scale, StandardScaler, RobustScaler
 from sklearn.linear_model import LogisticRegressionCV
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 
-
-# TODO: Enable dropout learning_phase(0) in our CNN to enable Monte Carlo search.
 
 def get_montecarlo_predictions(net, x_test, num_iter=50):
     """
@@ -20,7 +20,7 @@ def get_montecarlo_predictions(net, x_test, num_iter=50):
 
     acts_mc = []
     for i in range(num_iter):
-        _, _, activations = net.predict(x_test)  # FIX DROPOUT
+        _, _, activations = net.predict(x_test, dropout_enabled=True)
         acts_mc.append(activations[-1])
 
     return np.asarray(acts_mc)
@@ -92,11 +92,19 @@ def normalize(normal, novelty):
     """
 
     n_samples = len(normal)
-    #total = scale(np.concatenate((normal, novelty)))
-    scaler = StandardScaler()
-    total = scaler.fit_transform([np.concatenate((normal, novelty))])
 
-    return total[0, :n_samples], total[0, n_samples:], scaler
+    values = np.hstack((normal,novelty)).reshape(-1,1)
+
+    total_orig = scale(np.concatenate((normal, novelty)))
+
+    scaler = StandardScaler()
+    total = scaler.fit_transform(values)
+
+    scaler2 = RobustScaler()
+    total2 = scaler2.fit_transform(values)
+
+    return total[:n_samples].ravel(), total[n_samples:].ravel(), scaler, \
+           total2[:n_samples].ravel(), total2[n_samples:].ravel(), scaler2
 
 
 def train_logistic_regression(densities_pos, densities_neg, uncerts_pos, uncerts_neg):

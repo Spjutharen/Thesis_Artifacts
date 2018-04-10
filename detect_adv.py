@@ -7,7 +7,7 @@ from utils import *
 
 
 # Optimal KDE bandwidths that were determined from CV tuning
-BANDWIDTHS = {'mnist': 1.20, 'cifar': 0.26}
+BANDWIDTHS = {'mnist': 1.20, 'mnist2': 0.3}
 # TODO: Find bandwidths suitable for our network.
 
 
@@ -21,7 +21,7 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
     :param y_train:
     :param x_test:
     :param y_test:
-    :param dataset: 'mnist' or 'cifar'
+    :param dataset: 'mnist'
     :return:
     """
 
@@ -39,12 +39,12 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
     inds_correct = np.where(np.argmax(y_test_closed, 1) == preds_closed)[0]
     x_test_closed = x_test_closed[inds_correct]
     x_test_open = x_test_open[inds_correct]  # Might as well be randomly sampled images of the same amount.
-    print("Number of correctly classified images: {}".format(len(x_test_closed)))
+    print("{} correctly classified images out of {}".format(len(x_test_closed), len(x_test)/2))
 
     # Gather Bayesian uncertainty scores.
     print('°' * 15 + "Computing Bayesian uncertainty scores")
-    x_closed_uncertanties = get_montecarlo_predictions(net, x_test_closed, num_iter=10).var(axis=0).mean(axis=1)
-    x_open_uncertanties = get_montecarlo_predictions(net, x_test_open, num_iter=10).var(axis=0).mean(axis=1)
+    x_closed_uncertanties = get_montecarlo_predictions(net, x_test_closed, num_iter=40).var(axis=0).mean(axis=1)
+    x_open_uncertanties = get_montecarlo_predictions(net, x_test_open, num_iter=40).var(axis=0).mean(axis=1)
 
     # Gather Kernel Density Estimates.
     print('°' * 15 + "Gather hidden layer activations")
@@ -73,11 +73,10 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
 
     # Z-score the uncertainty and density values.
     print('°' * 15 + "Normalizing values")
-    uncerts_closed_z, uncerts_open_z, scaler_uncerts = normalize(x_closed_uncertanties, x_open_uncertanties)
-    densities_closed_z, densities_open_z, scaler_dens = normalize(densities_closed, densities_open)
-
-    #uncerts_closed_z, uncerts_open_z = x_closed_uncertanties, x_open_uncertanties
-    #densities_closed_z, densities_open_z = densities_closed, densities_open
+    uncerts_closed_z, uncerts_open_z, scaler_uncerts, uncerts_closed_z2, uncerts_open_z2, scaler_uncerts2 = \
+        normalize(x_closed_uncertanties, x_open_uncertanties)
+    densities_closed_z, densities_open_z, scaler_dens, densities_closed_z2, densities_open_z2, scaler_dens2 = \
+        normalize(densities_closed, densities_open)
 
     # Build logistic regression detector.
     print('°' * 15 + "Building logistic regression model")
@@ -88,10 +87,18 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
         uncerts_neg=uncerts_closed_z
     )
 
+    values_rob, labels_rob, lr_robust = train_logistic_regression(
+        densities_pos=densities_open_z2,
+        densities_neg=densities_closed_z2,
+        uncerts_pos=uncerts_open_z2,
+        uncerts_neg=uncerts_closed_z2
+    )
+
     # Evaluate detector.
     # Compute logistic regression model predictions.
     print('°' * 15 + 'Predicting values')
     probs = lr.predict_proba(values)[:, 1]
+    probs_robust = lr_robust.predict_proba(values_rob)[:, 1]
 
     # Compute ROC and AUC
     n_samples = len(x_test_closed)
@@ -99,9 +106,16 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
     _, _, auc_score = compute_roc(
         probs_neg=probs[:n_samples],
         probs_pos=probs[n_samples:],
-        plot=True
+        plot=False
     )
     print('Detector ROC-AUC score: %0.4f' % auc_score)
 
-    return kernel_dens, lr, scaler_dens, scaler_uncerts
+    _, _, auc_score_robust = compute_roc(
+        probs_neg=probs_robust[:n_samples],
+        probs_pos=probs_robust[n_samples:],
+        plot=False
+    )
+    print('Robust Detector ROC-AUC score: %0.4f' % auc_score_robust)
+
+    return kernel_dens, lr, scaler_dens, scaler_uncerts, scaler_dens2, scaler_uncerts2, lr_robust
 
