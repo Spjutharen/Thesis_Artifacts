@@ -40,8 +40,8 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
 
     # Gather Bayesian uncertainty scores.
     print('°' * 15 + "Computing Bayesian uncertainty scores")
-    x_closed_uncertanties = get_montecarlo_predictions(net, x_test_closed, num_iter=40).var(axis=0).mean(axis=1)
-    x_open_uncertanties = get_montecarlo_predictions(net, x_test_open, num_iter=40).var(axis=0).mean(axis=1)
+    x_closed_uncertainties = get_montecarlo_predictions(net, x_test_closed, num_iter=40).var(axis=0).mean(axis=1)
+    x_open_uncertainties = get_montecarlo_predictions(net, x_test_open, num_iter=40).var(axis=0).mean(axis=1)
 
     # Gather Kernel Density Estimates.
     print('°' * 15 + "Gather hidden layer activations")
@@ -71,7 +71,7 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
     # Z-score the uncertainty and density values.
     print('°' * 15 + "Normalizing values")
     uncerts_closed_z, uncerts_open_z, scaler_uncerts, uncerts_closed_z2, uncerts_open_z2, scaler_uncerts2 = \
-        normalize(x_closed_uncertanties, x_open_uncertanties)
+        normalize(x_closed_uncertainties, x_open_uncertainties)
     densities_closed_z, densities_open_z, scaler_dens, densities_closed_z2, densities_open_z2, scaler_dens2 = \
         normalize(densities_closed, densities_open)
 

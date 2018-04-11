@@ -10,12 +10,12 @@ from sklearn.metrics import roc_curve, auc
 
 def get_montecarlo_predictions(net, x_test, num_iter=50):
     """
-    FOR BAYESIAN NEURAL NETWORK UNCERTAINTY.
+    Does a Monte Carlo search of activation variations in the logits to find uncertainties.
 
     :param net: cnn network.
     :param x_test: test images.
     :param num_iter: number of iterations of Monte Carlo sampling.
-    :return:
+    :return:  array of logits from each iteration.
     """
 
     acts_mc = []
@@ -28,12 +28,11 @@ def get_montecarlo_predictions(net, x_test, num_iter=50):
 
 def get_hidden_representations(net, x_test):
     """
-    FOR KERNEL DENSITY ESTIMATION.
     Predict given test images and returns last hidden layer activations.
 
-    :param net:
+    :param net: cnn network.
     :param x_test:
-    :return:
+    :return: array or activations.
     """
 
     _, _, activations = net.predict(x_test)
@@ -60,10 +59,10 @@ def score_samples(kernel_dens, samples, predictions, n_jobs=None):
     Computes the kernel density score for each sample for predicted class.
 
     :param kernel_dens:
-    :param samples:
-    :param predictions:
+    :param samples: images to be scored.
+    :param predictions: predicted label of sample.
     :param n_jobs: number of processes allowed to compute in parallel.
-    :return:
+    :return: array of scores.
     """
 
     if n_jobs is not None:
@@ -86,9 +85,9 @@ def normalize(normal, novelty):
     """
     Normalize data.
 
-    :param normal:
-    :param novelty:
-    :return:
+    :param normal: closed set images (images belonging to training set domain).
+    :param novelty: open set images (novelties).
+    :return: normalized data and scale models.
     """
 
     n_samples = len(normal)
@@ -109,13 +108,13 @@ def normalize(normal, novelty):
 
 def train_logistic_regression(densities_pos, densities_neg, uncerts_pos, uncerts_neg):
     """
-    Train the logistic regression model given densities and uncertanties.
+    Train the logistic regression model given densities and uncertainties.
 
-    :param densities_pos:
-    :param densities_neg:
-    :param uncerts_pos:
-    :param uncerts_neg:
-    :return:
+    :param densities_pos: densities for open set images (novelties).
+    :param densities_neg: densities for closed set images (normals).
+    :param uncerts_pos: uncertainties for open set images.
+    :param uncerts_neg: uncertainties for closed set images.
+    :return: all samples and labels plus the logistic regression model.
     """
 
     values_neg = np.concatenate(
@@ -140,10 +139,10 @@ def compute_roc(probs_neg, probs_pos, plot=False):
     """
     Compute ROC and AUC score.
 
-    :param probs_neg:
-    :param probs_pos:
-    :param plot:
-    :return:
+    :param probs_neg: predicted labels for closed set images.
+    :param probs_pos: predicted labels for open set images.
+    :param plot: boolean for plotting or not.
+    :return: false positives, true positives, area-under-curve score.
     """
 
     probs = np.concatenate((probs_neg, probs_pos))

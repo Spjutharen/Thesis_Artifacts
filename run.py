@@ -1,5 +1,5 @@
 import h5py
-from detect_adv import *
+from detect_adv import create_detector
 from utils import *
 import sys
 #sys.path.append('../Thesis_CNN_mnist/')
@@ -16,12 +16,13 @@ import pickle
 x_train, y_train, _, _, x_test, y_test = load_datasets(test_size=10000, val_size=40000, omniglot_bool=True,
                                                                name_data_set='data_omni.h5', force=False,
                                                                create_file=True, r_seed=None)
+
+# Limit the data to facilitate runs on slower computers.
 langd=10000
 x_train = x_train[:langd]
 y_train = y_train[:langd]
 x_test = x_test[9900:10100]
 y_test = y_test[9900:10100]
-
 
 # Build model.
 tf.reset_default_graph()
@@ -32,6 +33,7 @@ net = MnistCNN(sess, save_dir='MnistCNN_save/')
 #kdes, lr, scaler_dens, scaler_uncerts, scaler_dens2, scaler_uncerts2, lr_robust = \
 #    create_detector(net, x_train, y_train, x_test, y_test, dataset='mnist')
 
+# Save models.
 filename = "logregmodel.sav"
 filename2 = "kdes.sav"
 filename3 = "scaler_dens.sav"
@@ -46,7 +48,7 @@ loaded_kdes = pickle.load(open(filename2, 'rb'))
 scaler_dens = pickle.load(open(filename3, 'rb'))
 scaler_uncerts = pickle.load(open(filename4, 'rb'))
 
-# FOR TESTING SAMPLE IMAGE
+# Testing model on test images.
 acc = 0
 prob = []
 for i in range(0, len(x_test)):
@@ -73,11 +75,8 @@ for i in range(0, len(x_test)):
     if prob[i] == true:
         acc = acc +1
 
-    #print("dens: {}".format(dens))
-    #print("uncert: {}".format(xact1))
-    #print("predicted label: {}".format(prob))
-    #print("true label: {}".format(test_label))
 print("Accuracy: {}".format(acc/len(x_test)))
+
 # Compute ROC and AUC
 n_samples = np.int(len(x_test)/2)
 
