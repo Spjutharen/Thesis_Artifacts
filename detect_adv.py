@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.neighbors import KernelDensity
-
 import sys
 sys.path.append('../Thesis_Artifacts')
 from utils import *
@@ -8,21 +7,20 @@ from utils import *
 
 # Optimal KDE bandwidths that were determined from CV tuning
 BANDWIDTHS = {'mnist': 1.20, 'mnist2': 0.3}
-# TODO: Find bandwidths suitable for our network.
+# TODO: Find bandwidths optimal for our network.
 
 
 def create_detector(net, x_train, y_train, x_test, y_test, dataset):
     """
-    Eftersom adversarial examples ibland kan klassificeras rätt så finns det i det fallet ett set av korrekt
-    klassificerade samples. Detta finns inte i novelty detection och kan i värsta fall omöjliggöra metoden.
+    Create a logistic regression model for detection of novelties.
 
-    :param net:
+    :param net:     neural network model
     :param x_train:
     :param y_train:
     :param x_test:
     :param y_test:
     :param dataset: 'mnist'
-    :return:
+    :return:    scale, kernel densities and logistic regression models.
     """
 
     # Assuming test set is not shuffled.
@@ -35,7 +33,6 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
     preds_open, _, _ = net.predict(x_test_open)
 
     # Correctly classified images. There are no correctly classified Omniglot images.
-    # TODO: match logits in omniglot to find images with similar response to replace adversarial images in the paper.
     inds_correct = np.where(np.argmax(y_test_closed, 1) == preds_closed)[0]
     x_test_closed = x_test_closed[inds_correct]
     x_test_open = x_test_open[inds_correct]  # Might as well be randomly sampled images of the same amount.
@@ -108,14 +105,14 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
         probs_pos=probs[n_samples:],
         plot=False
     )
-    print('Detector ROC-AUC score: %0.4f' % auc_score)
+    print('Standard scaling detector ROC-AUC score: %0.4f' % auc_score)
 
     _, _, auc_score_robust = compute_roc(
         probs_neg=probs_robust[:n_samples],
         probs_pos=probs_robust[n_samples:],
         plot=False
     )
-    print('Robust Detector ROC-AUC score: %0.4f' % auc_score_robust)
+    print('Robust scaling detector ROC-AUC score: %0.4f' % auc_score_robust)
 
     return kernel_dens, lr, scaler_dens, scaler_uncerts, scaler_dens2, scaler_uncerts2, lr_robust
 
