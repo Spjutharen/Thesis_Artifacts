@@ -12,3 +12,13 @@ Numpy, h5py, pickle, sklearn, matplotlib, multiprocessing
 ```
 kdes, lr, scaler_dens, scaler_uncerts, scaler_dens2, scaler_uncerts2, lr_robust = create_detector(net, x_train, y_train, x_test, y_test, dataset='mnist')
 ```
+
+### Evaluate
+
+```
+openmax_probab = recalibrate_scores(weibull_model, act[-1], alpharank=10)
+```
+
+
+
+

@@ -1,5 +1,5 @@
 import h5py
-from detect_adv import create_detector
+from detect import create_detector
 from utils import *
 import sys
 #sys.path.append('../Thesis_CNN_mnist/')
