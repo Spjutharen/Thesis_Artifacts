@@ -21,7 +21,7 @@ x_train, y_train, _, _, x_test, y_test = load_datasets(test_size=10000, val_size
 langd=10000
 x_train = x_train[:langd]
 y_train = y_train[:langd]
-x_test = x_test[9900:10100]
+x_test = x_test[9900:10100]  #50/50 mnist and omniglot
 y_test = y_test[9900:10100]
 
 # Build model.
@@ -38,6 +38,7 @@ filename = "logregmodel.sav"
 filename2 = "kdes.sav"
 filename3 = "scaler_dens.sav"
 filename4 = "scaler_uncerts.sav"
+
 #pickle.dump(lr_robust, open(filename, "wb"))
 #pickle.dump(kdes, open(filename2, "wb"))
 #pickle.dump(scaler_dens2, open(filename3, "wb"))
@@ -73,7 +74,7 @@ for i in range(0, len(x_test)):
     else:
         true = 1
     if prob[i] == true:
-        acc = acc +1
+        acc = acc + 1
 
 print("Accuracy: {}".format(acc/len(x_test)))
 

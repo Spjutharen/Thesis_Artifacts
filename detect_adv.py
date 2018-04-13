@@ -5,52 +5,51 @@ sys.path.append('../Thesis_Artifacts')
 from utils import *
 
 
-# Optimal KDE bandwidths that were determined from CV tuning
 BANDWIDTHS = {'mnist': 1.20, 'mnist2': 0.3}
-# TODO: Find bandwidths optimal for our network.
+# TODO: Find bandwidths optimal for our network through a tuning set (adversarial images).
 
 
 def create_detector(net, x_train, y_train, x_test, y_test, dataset):
     """
     Create a logistic regression model for detection of novelties.
 
-    :param net:     neural network model
-    :param x_train:
+    :param net:     neural network model.
+    :param x_train: closed set images (Mnist).
     :param y_train:
-    :param x_test:
+    :param x_test: images of both closed (Mnist) and open set (Omniglot).
     :param y_test:
     :param dataset: 'mnist'
     :return:    scale, kernel densities and logistic regression models.
     """
 
-    # Assuming test set is not shuffled.
+    # Assuming test set is not shuffled. Divide closed set images from open set images.
     x_test_closed = x_test[:np.int(len(x_test)/2)]
     y_test_closed = y_test[:np.int(len(x_test)/2)]
     x_test_open = x_test[np.int(len(x_test)/2):]
 
-    # Test model.
+    # Get network predictions.
     preds_closed, _, _ = net.predict(x_test_closed)
     preds_open, _, _ = net.predict(x_test_open)
 
-    # Correctly classified images. There are no correctly classified Omniglot images.
+    # Correctly classified images. There are no correctly classified Omniglot images -> chose same amount.
     inds_correct = np.where(np.argmax(y_test_closed, 1) == preds_closed)[0]
     x_test_closed = x_test_closed[inds_correct]
     x_test_open = x_test_open[inds_correct]  # Might as well be randomly sampled images of the same amount.
     print("{} correctly classified images out of {}".format(len(x_test_closed), len(x_test)/2))
 
     # Gather Bayesian uncertainty scores.
-    print('°' * 15 + "Computing Bayesian uncertainty scores")
+    print("Computing Bayesian uncertainty scores")
     x_closed_uncertainties = get_montecarlo_predictions(net, x_test_closed, num_iter=40).var(axis=0).mean(axis=1)
     x_open_uncertainties = get_montecarlo_predictions(net, x_test_open, num_iter=40).var(axis=0).mean(axis=1)
 
     # Gather Kernel Density Estimates.
-    print('°' * 15 + "Gather hidden layer activations")
+    print("Gathering hidden layer activations")
     x_train_features = get_hidden_representations(net, x_train)
     x_test_closed_features = get_hidden_representations(net, x_test_closed)
     x_test_open_features = get_hidden_representations(net, x_test_open)
 
     # Train one KDE per class.
-    print('°' * 15 + "Training kernel density estimates")
+    print("Training kernel density estimates")
     kernel_dens = {}
     for i in range(y_train.shape[1]):
         class_inds = np.where(y_train.argmax(axis=1) == i)[0]
@@ -58,18 +57,18 @@ def create_detector(net, x_train, y_train, x_test, y_test, dataset):
             .fit(x_train_features[class_inds])
 
     # Predict classes.
-    print('°' * 15 + "Computing network predictions")
+    print("Computing network predictions")
     preds_test_closed, _, _ = net.predict(x_test_closed)
     preds_test_open, _, _ = net.predict(x_test_open)
 
     # Get density estimates.
     # Calculate scores for each image per predicted label.
-    print('°' * 15 + "Computing density estimate scores")
+    print("Computing density estimate scores")
     densities_closed = score_samples(kernel_dens, x_test_closed_features, preds_test_closed)
     densities_open = score_samples(kernel_dens, x_test_open_features, preds_test_open)
 
     # Z-score the uncertainty and density values.
-    print('°' * 15 + "Normalizing values")
+    print("Normalizing values")
     uncerts_closed_z, uncerts_open_z, scaler_uncerts, uncerts_closed_z2, uncerts_open_z2, scaler_uncerts2 = \
         normalize(x_closed_uncertainties, x_open_uncertainties)
     densities_closed_z, densities_open_z, scaler_dens, densities_closed_z2, densities_open_z2, scaler_dens2 = \
