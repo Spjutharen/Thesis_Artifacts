@@ -2,7 +2,7 @@ import h5py
 from detect import create_detector
 from utils import *
 import sys
-#sys.path.append('../Thesis_CNN_mnist/')
+sys.path.append('../Thesis_CNN_mnist/')
 from cnn import MnistCNN
 sys.path.append('../Thesis_Utilities/')
 from utilities import load_datasets
